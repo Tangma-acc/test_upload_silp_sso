@@ -46,7 +46,7 @@
                         // คุณอาจจะต้องสร้าง endpoint ใน n8n เพื่อรับ groupId แล้วส่งชื่อกลุ่มกลับมา
                         // ตัวอย่างสมมติว่าคุณส่ง groupId ไปถาม n8n:
                         try {
-                            const response = await fetch(`https://n8n.chaiwan-acct.com/webhook/get-group-name?groupId=${targetId}`);
+                            const response = await fetch(`https://n8n.chaiwan-acct.com/webhook/get-upload-page?groupId=${targetId}`);
                             const data = await response.json();
                             document.getElementById('userProfile').innerText = "กลุ่ม: " + (data.groupName || "ไม่ทราบชื่อกลุ่ม");
                         } catch (e) {
