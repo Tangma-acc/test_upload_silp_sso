@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Slip</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        .btn { background: #00b900; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        input[type=file] { margin: 20px 0; width: 100%; }
+        #status { margin-top: 20px; color: blue; }
+    </style>
+</head>
+<body>
+    <h2>แนบหลักฐานการโอนเงิน</h2>
+    <div id="userProfile">กำลังโหลดข้อมูล...</div>
+    
+    <input type="file" id="fileInput" accept="image/*">
+    <button class="btn" onclick="uploadSlip()">ส่งสลิป</button>
+    <p id="status"></p>
+
+    <script>
+        // เปลี่ยนค่าตรงนี้เป็น LIFF ID ของคุณ
+        const MY_LIFF_ID = 'ใส่_LIFF_ID_ของคุณที่นี่'; 
+        // เปลี่ยนค่าตรงนี้เป็น Webhook URL ของ n8n
+        const N8N_WEBHOOK_URL = 'ใส่_WEBHOOK_URL_ของ_n8n_ที่นี่';
+
+        async function main() {
+            try {
+                await liff.init({ liffId: MY_LIFF_ID });
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    const profile = await liff.getProfile();
+                    document.getElementById('userProfile').innerText = "สวัสดีคุณ: " + profile.displayName;
+                }
+            } catch (err) {
+                console.error('LIFF Error:', err);
+            }
+        }
+
+        async function uploadSlip() {
+            const fileInput = document.getElementById('fileInput');
+            const status = document.getElementById('status');
+            
+            if (fileInput.files.length === 0) {
+                alert('กรุณาเลือกรูปภาพสลิป');
+                return;
+            }
+
+            status.innerText = "กำลังส่งข้อมูล...";
+            const file = fileInput.files[0];
+            const profile = await liff.getProfile();
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', profile.userId);
+            formData.append('displayName', profile.displayName);
+
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    status.innerText = "ส่งสำเร็จ!";
+                    alert('ส่งสลิปเรียบร้อยแล้ว');
+                    liff.closeWindow(); // ส่งเสร็จปิดหน้าต่างทันที
+                } else {
+                    throw new Error('ส่งไม่สำเร็จ');
+                }
+            } catch (err) {
+                status.innerText = "เกิดข้อผิดพลาด กรุณาลองใหม่";
+                console.error(err);
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>
