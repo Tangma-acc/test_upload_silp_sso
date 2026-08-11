@@ -11,7 +11,7 @@
         .btn { background: #00b900; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 18px; font-weight: bold; }
         .btn:disabled { background: #ccc; cursor: not-allowed; }
         input[type=file] { margin: 20px 0; width: 100%; }
-        #status { margin-top: 20px; font-weight: bold; }
+        #status { margin-top: 20px; font-weight: bold; white-space: pre-wrap; }
         #userProfile { margin-bottom: 10px; color: #555; font-size: 1.1em; font-weight: bold; }
     </style>
 </head>
@@ -36,14 +36,10 @@
                     liff.login();
                     return;
                 }
-
-                // ดึงข้อมูลโปรไฟล์มาแสดงชื่อผู้ใช้เสมอ
                 const profile = await liff.getProfile();
                 document.getElementById('userProfile').innerText = "สวัสดีคุณ: " + profile.displayName;
-
             } catch (err) {
                 console.error('LIFF Error:', err);
-                document.getElementById('userProfile').innerText = "ไม่สามารถโหลดข้อมูลโปรไฟล์ได้";
             }
         }
 
@@ -59,7 +55,7 @@
 
             submitBtn.disabled = true;
             status.style.color = "blue";
-            status.innerText = "กำลังอัปโหลด...";
+            status.innerText = "กำลังเริ่มต้นอัปโหลด...";
 
             try {
                 const file = fileInput.files[0];
@@ -71,39 +67,45 @@
                 formData.append('userId', profile.userId);
                 formData.append('displayName', profile.displayName);
                 
-                // เก็บ context ข้อมูลแชท (ถ้ามี)
                 const targetId = context.groupId || context.roomId || profile.userId;
                 formData.append('groupId', targetId);
 
-                // 1. ส่งไฟล์ไปที่ n8n เพื่อบันทึกลง Google Drive/Sheet
+                // --- ขั้นตอนที่ 1: ส่งไฟล์ไป n8n ---
+                status.innerText = "กำลังส่งไฟล์ไปที่เซิร์ฟเวอร์...";
                 const response = await fetch(N8N_WEBHOOK_URL, {
                     method: 'POST',
                     body: formData
                 });
 
-                if (response.ok) {
-                    status.style.color = "green";
-                    status.innerText = "อัปโหลดสำเร็จ! กำลังส่งข้อมูล...";
+                if (!response.ok) {
+                    // ถ้า n8n ตอบกลับมาเป็น 500 ให้หยุดตรงนี้และแจ้งเตือน
+                    throw new Error(`Server Error (${response.status}): ฝั่ง n8n ทำงานผิดพลาด กรุณาเช็ค Executions ใน n8n`);
+                }
 
-                    // 2. ใช้ liff.sendMessages เพื่อส่งข้อความแทนตัวผู้ใช้
-                    // ข้อความนี้จะไปโผล่ในแชท และทำให้เกิด Webhook Event ไปยัง n8n/Bot
-                    if (liff.isInClient()) {
+                // --- ขั้นตอนที่ 2: ถ้าไฟล์ผ่านแล้ว ให้ส่งข้อความ LINE ---
+                status.style.color = "green";
+                status.innerText = "อัปโหลดสำเร็จ! กำลังส่งข้อความเข้าแชท...";
+
+                if (liff.isInClient()) {
+                    try {
                         await liff.sendMessages([
                             {
                                 type: 'text',
                                 text: 'ส่งหลักฐานการโอนเงินแล้ว'
                             }
                         ]);
+                        console.log("ส่งข้อความสำเร็จ");
+                    } catch (sendError) {
+                        console.error("sendMessages Error:", sendError);
+                        alert("อัปโหลดสำเร็จ แต่ไม่สามารถส่งข้อความแทนตัวคุณได้: " + sendError.message);
                     }
-
-                    // ปิดหน้าต่าง LIFF หลังจากส่งสำเร็จ
-                    setTimeout(() => { liff.closeWindow(); }, 1500);
-                } else {
-                    throw new Error('Server Error (500)');
                 }
+
+                setTimeout(() => { liff.closeWindow(); }, 2000);
+
             } catch (err) {
                 status.style.color = "red";
-                status.innerText = "เกิดข้อผิดพลาด: " + err.message;
+                status.innerText = "❌ เกิดข้อผิดพลาด:\n" + err.message;
                 submitBtn.disabled = false;
             }
         }
