@@ -47,7 +47,7 @@
         // 1. ดึงข้อมูลจาก URL Parameters ทันทีที่โหลดหน้าเว็บ
         const urlParams = new URLSearchParams(window.location.search);
         const gidFromUrl = urlParams.get('groupId');
-        const amountFromUrl = urlParams.get('amount');
+        const amountFromUrl = urlParams.get('amount') ? urlParams.get('amount').replace(/,/g, '') : "0";
         const monthFromUrl = urlParams.get('month');
 
         async function main() {
