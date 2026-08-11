@@ -35,12 +35,30 @@
                 if (!liff.isLoggedIn()) {
                     liff.login();
                 } else {
+                    const context = liff.getContext();
                     const profile = await liff.getProfile();
-                    document.getElementById('userProfile').innerText = "สวัสดีคุณ: " + profile.displayName;
+                    
+                    // ตรวจสอบว่าเปิดในกลุ่มหรือไม่
+                    if (context && (context.groupId || context.roomId)) {
+                        const targetId = context.groupId || context.roomId;
+                        
+                        // --- ส่วนสำคัญ ---
+                        // คุณอาจจะต้องสร้าง endpoint ใน n8n เพื่อรับ groupId แล้วส่งชื่อกลุ่มกลับมา
+                        // ตัวอย่างสมมติว่าคุณส่ง groupId ไปถาม n8n:
+                        try {
+                            const response = await fetch(`YOUR_N8N_GET_GROUP_NAME_URL?groupId=${targetId}`);
+                            const data = await response.json();
+                            document.getElementById('userProfile').innerText = "กลุ่ม: " + (data.groupName || "ไม่ทราบชื่อกลุ่ม");
+                        } catch (e) {
+                            document.getElementById('userProfile').innerText = "สวัสดีคุณ: " + profile.displayName;
+                        }
+                    } else {
+                        // ถ้าเปิดคุยส่วนตัว ให้แสดงชื่อคนเหมือนเดิม
+                        document.getElementById('userProfile').innerText = "สวัสดีคุณ: " + profile.displayName;
+                    }
                 }
             } catch (err) {
                 console.error('LIFF Error:', err);
-                document.getElementById('status').innerText = "LIFF Error: " + err.message;
             }
         }
 
