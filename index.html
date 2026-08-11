@@ -18,7 +18,7 @@
 <body>
     <div class="container">
         <h2>แนบหลักฐานการโอนเงิน</h2>
-        <div id="userProfile">กำลังโหลดข้อมูล...</div>
+        <div id="userProfile">กำลังโหลดข้อมูลผู้ใช้...</div>
         
         <input type="file" id="fileInput" accept="image/*">
         <button id="submitBtn" class="btn" onclick="uploadSlip()">ส่งสลิป</button>
@@ -28,7 +28,6 @@
     <script>
         const MY_LIFF_ID = '2008841862-yyOOifz4'; 
         const N8N_WEBHOOK_URL = 'https://n8n.chaiwan-acct.com/webhook/payment_slip-sso';
-        const GET_GROUP_INFO_URL = 'https://n8n.chaiwan-acct.com/webhook/get-upload-page';
 
         async function main() {
             try {
@@ -38,34 +37,13 @@
                     return;
                 }
 
+                // ดึงข้อมูลโปรไฟล์มาแสดงชื่อผู้ใช้เสมอ
                 const profile = await liff.getProfile();
-                const context = liff.getContext();
-                const profileDisplay = document.getElementById('userProfile');
+                document.getElementById('userProfile').innerText = "สวัสดีคุณ: " + profile.displayName;
 
-                // กรณีเปิดในกลุ่ม หรือห้องแชท
-                if (context && (context.groupId || context.roomId)) {
-                    const targetId = context.groupId || context.roomId;
-                    
-                    try {
-                        // ดึงชื่อกลุ่มจาก n8n
-                        const response = await fetch(`${GET_GROUP_INFO_URL}?groupId=${targetId}`);
-                        if (response.ok) {
-                            const data = await response.json();
-                            profileDisplay.innerText = "กลุ่ม: " + (data.groupName || "ไม่ทราบชื่อกลุ่ม");
-                        } else {
-                            throw new Error();
-                        }
-                    } catch (e) {
-                        // ถ้าดึงชื่อกลุ่มไม่ได้ ให้โชว์ชื่อคนแทน
-                        profileDisplay.innerText = "สวัสดีคุณ: " + profile.displayName;
-                    }
-                } else {
-                    // กรณีเปิดคุยส่วนตัว
-                    profileDisplay.innerText = "สวัสดีคุณ: " + profile.displayName;
-                }
             } catch (err) {
                 console.error('LIFF Error:', err);
-                document.getElementById('userProfile').innerText = "เกิดข้อผิดพลาดในการโหลดโปรไฟล์";
+                document.getElementById('userProfile').innerText = "ไม่สามารถโหลดข้อมูลโปรไฟล์ได้";
             }
         }
 
@@ -93,10 +71,11 @@
                 formData.append('userId', profile.userId);
                 formData.append('displayName', profile.displayName);
                 
-                // ส่ง GroupID ไปด้วยเพื่อให้ n8n รู้ว่าต้องตอบกลับที่ไหน
+                // เก็บ context ข้อมูลแชท (ถ้ามี)
                 const targetId = context.groupId || context.roomId || profile.userId;
                 formData.append('groupId', targetId);
 
+                // 1. ส่งไฟล์ไปที่ n8n เพื่อบันทึกลง Google Drive/Sheet
                 const response = await fetch(N8N_WEBHOOK_URL, {
                     method: 'POST',
                     body: formData
@@ -104,14 +83,27 @@
 
                 if (response.ok) {
                     status.style.color = "green";
-                    status.innerText = "ส่งสลิปสำเร็จ!";
-                    setTimeout(() => { liff.closeWindow(); }, 2000);
+                    status.innerText = "อัปโหลดสำเร็จ! กำลังส่งข้อมูล...";
+
+                    // 2. ใช้ liff.sendMessages เพื่อส่งข้อความแทนตัวผู้ใช้
+                    // ข้อความนี้จะไปโผล่ในแชท และทำให้เกิด Webhook Event ไปยัง n8n/Bot
+                    if (liff.isInClient()) {
+                        await liff.sendMessages([
+                            {
+                                type: 'text',
+                                text: 'ส่งหลักฐานการโอนเงินแล้ว'
+                            }
+                        ]);
+                    }
+
+                    // ปิดหน้าต่าง LIFF หลังจากส่งสำเร็จ
+                    setTimeout(() => { liff.closeWindow(); }, 1500);
                 } else {
                     throw new Error('Server Error (500)');
                 }
             } catch (err) {
                 status.style.color = "red";
-                status.innerText = "ส่งไม่สำเร็จ: " + err.message;
+                status.innerText = "เกิดข้อผิดพลาด: " + err.message;
                 submitBtn.disabled = false;
             }
         }
