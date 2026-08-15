@@ -146,7 +146,7 @@
                 if (liff.isInClient()) {
                     await liff.sendMessages([{
                         type: 'text',
-                        text: `✅ แจ้งโอนเงินสำเร็จ\nเดือน: ${monthFromUrl}\nยอดเงิน: ${parseFloat(amountFromUrl).toLocaleString()} บาท\nสถานะ: ตรวจสอบผ่านระบบแล้ว`
+                        text: `ส่งหลักฐานการโอนเงินแล้ว`
                     }]);
                 }
                 setTimeout(() => { liff.closeWindow(); }, 3000);
