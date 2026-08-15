@@ -3,114 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Slip</title>
+    <title>แจ้งชำระเงิน - Slip Verification</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background-color: #f4f4f4; }
-        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
-        .btn { background: #00b900; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 18px; font-weight: bold; }
-        .btn:disabled { background: #ccc; cursor: not-allowed; }
-        input[type=file] { margin: 20px 0; width: 100%; }
-        #status { margin-top: 20px; font-weight: bold; white-space: pre-wrap; }
-        #userProfile { margin-bottom: 10px; color: #555; font-size: 1.1em; font-weight: bold; }
+        :root { --primary-color: #1DB446; --error-color: #dc3545; --text-color: #333; }
+        body { font-family: 'Kanit', sans-serif; background-color: #f8f9fa; color: var(--text-color); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 450px; width: 100%; }
+        
+        .header h2 { margin-top: 0; color: var(--primary-color); }
+        .amount-card { background: #f0fdf4; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px dashed var(--primary-color); }
+        .amount-label { font-size: 14px; color: #666; margin-bottom: 5px; }
+        .amount-value { font-size: 32px; color: var(--primary-color); font-weight: 600; }
+
+        .upload-zone { border: 2px dashed #ccc; padding: 20px; border-radius: 15px; margin-bottom: 20px; cursor: pointer; transition: 0.3s; position: relative; }
+        .upload-zone:hover { border-color: var(--primary-color); background: #fafffa; }
+        #preview { width: 100%; border-radius: 10px; display: none; margin-bottom: 10px; }
+        
+        .btn { background: var(--primary-color); color: white; border: none; padding: 16px; border-radius: 12px; cursor: pointer; width: 100%; font-size: 18px; font-weight: 600; transition: 0.3s; box-shadow: 0 4px 12px rgba(29, 180, 70, 0.3); }
+        .btn:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+        
+        #status { margin-top: 20px; font-size: 15px; white-space: pre-wrap; transition: 0.5s; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; margin: 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        #userProfile { font-size: 13px; color: #888; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>แนบหลักฐานการโอนเงิน</h2>
-        <div id="userProfile">กำลังโหลดข้อมูล...</div>
-        
-        <input type="file" id="fileInput" accept="image/*">
-        <button id="submitBtn" class="btn" onclick="uploadSlip()">ส่งสลิป</button>
-        <p id="status"></p>
+
+<div class="container">
+    <div class="header">
+        <h2>แจ้งโอนเงิน</h2>
+        <div id="userProfile">กำลังยืนยันตัวตน...</div>
     </div>
 
-    <script>
-        const MY_LIFF_ID = '2011067375-gy6YLpsD'; 
-        const N8N_WEBHOOK_URL = 'https://n8n.chaiwan-acct.com/webhook/d884b82b-a9fc-408f-a902-689bfcf38889';
+    <div class="amount-card">
+        <div class="amount-label">ยอดที่ต้องชำระประจำเดือน: <span id="txtMonth" style="color:var(--text-color); font-weight:bold;">-</span></div>
+        <div class="amount-value">฿ <span id="txtAmount">0.00</span></div>
+    </div>
 
-        async function main() {
-            try {
-                await liff.init({ liffId: MY_LIFF_ID });
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                    return;
-                }
-                const profile = await liff.getProfile();
-                document.getElementById('userProfile').innerText = "ยินดีต้อนรับคุณ: " + profile.displayName;
-            } catch (err) {
-                console.error('LIFF Error:', err);
-            }
-        }
+    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <img id="preview" src="#" alt="สลิปของคุณ">
+        <div id="uploadPlaceholder">
+            <span style="font-size: 40px;">📸</span>
+            <p>กดเพื่อเลือกรูปภาพสลิป</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="previewImage(this)">
+    </div>
 
-        async function uploadSlip() {
-            const fileInput = document.getElementById('fileInput');
-            const status = document.getElementById('status');
-            const submitBtn = document.getElementById('submitBtn');
-            
-            if (fileInput.files.length === 0) {
-                alert('กรุณาเลือกรูปภาพสลิป');
+    <div id="loader" class="loader"></div>
+    <button id="submitBtn" class="btn" onclick="handleProcess()">ตรวจสอบและส่งสลิป</button>
+    <p id="status"></p>
+</div>
+
+<script>
+    const MY_LIFF_ID = '2008841862-yyOOifz4'; 
+    const N8N_WEBHOOK_URL = 'https://n8n.chaiwan-acct.com/webhook/payment_slip-sso';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const amountFromUrl = urlParams.get('amount')?.replace(/,/g, '') || "0";
+    const monthFromUrl = urlParams.get('month') || "ไม่ระบุ";
+    const gidFromUrl = urlParams.get('groupId');
+
+    // 1. Initial LIFF
+    async function main() {
+        try {
+            await liff.init({ liffId: MY_LIFF_ID });
+            if (!liff.isLoggedIn()) {
+                liff.login();
                 return;
             }
+            const profile = await liff.getProfile();
+            document.getElementById('userProfile').innerText = "ผู้ส่ง: " + profile.displayName;
+            document.getElementById('txtAmount').innerText = parseFloat(amountFromUrl).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('txtMonth').innerText = monthFromUrl;
+        } catch (err) {
+            console.error('LIFF Init Error:', err);
+        }
+    }
 
-            submitBtn.disabled = true;
-            status.style.color = "blue";
-            status.innerText = "กำลังเริ่มต้นอัปโหลด...";
-
-            try {
-                const file = fileInput.files[0];
-                const profile = await liff.getProfile();
-                const context = liff.getContext();
-
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('userId', profile.userId);
-                formData.append('displayName', profile.displayName);
-                
-                const targetId = context.groupId || context.roomId || profile.userId;
-                formData.append('groupId', targetId);
-
-                // --- ขั้นตอนที่ 1: ส่งไฟล์ไป n8n ---
-                status.innerText = "กำลังส่งไฟล์...";
-                const response = await fetch(N8N_WEBHOOK_URL, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    // ถ้า n8n ตอบกลับมาเป็น 500 ให้หยุดตรงนี้และแจ้งเตือน
-                    throw new Error(`Server Error (${response.status}): ทำงานผิดพลาด กรุณาเช็ค Executions`);
-                }
-
-                // --- ขั้นตอนที่ 2: ถ้าไฟล์ผ่านแล้ว ให้ส่งข้อความ LINE ---
-                status.style.color = "green";
-                status.innerText = "อัปโหลดสำเร็จ!";
-
-                if (liff.isInClient()) {
-                    try {
-                        await liff.sendMessages([
-                            {
-                                type: 'text',
-                                text: 'ส่งหลักฐานการโอนเงินแล้ว'
-                            }
-                        ]);
-                        console.log("ส่งข้อความสำเร็จ");
-                    } catch (sendError) {
-                        console.error("sendMessages Error:", sendError);
-                        alert("อัปโหลดสำเร็จ แต่ไม่สามารถส่งข้อความแทนตัวคุณได้: " + sendError.message);
-                    }
-                }
-
-                setTimeout(() => { liff.closeWindow(); }, 2000);
-
-            } catch (err) {
-                status.style.color = "red";
-                status.innerText = "❌ เกิดข้อผิดพลาด:\n" + err.message;
-                submitBtn.disabled = false;
+    // 2. แสดงตัวอย่างรูปภาพ
+    function previewImage(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview').src = e.target.result;
+                document.getElementById('preview').style.display = "block";
+                document.getElementById('uploadPlaceholder').style.display = "none";
             }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // 3. เริ่มกระบวนการตรวจสอบ
+    async function handleProcess() {
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+        const submitBtn = document.getElementById('submitBtn');
+        const loader = document.getElementById('loader');
+
+        if (!fileInput.files[0]) {
+            alert('กรุณาเลือกรูปภาพสลิปก่อนครับ');
+            return;
         }
 
-        main();
-    </script>
+        submitBtn.disabled = true;
+        loader.style.display = "block";
+        status.style.color = "#007bff";
+        status.innerText = "กำลังตรวจสอบสลิปด้วยระบบ AI...";
+
+        try {
+            const file = fileInput.files[0];
+            const profile = await liff.getProfile();
+            
+            // สร้าง FormData ส่งไปที่ n8n
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', profile.userId);
+            formData.append('displayName', profile.displayName);
+            formData.append('groupId', gidFromUrl || profile.userId);
+            formData.append('expectedAmount', amountFromUrl);
+            formData.append('month', monthFromUrl);
+
+            // --- ส่งไปยัง n8n (ให้ n8n ไปเช็ก OCR/API ต่อ) ---
+            const response = await fetch(N8N_WEBHOOK_URL, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error("การเชื่อมต่อเซิร์ฟเวอร์ผิดพลาด");
+
+            const result = await response.json();
+            loader.style.display = "none";
+
+            if (result.status === "success") {
+                status.style.color = "#1DB446";
+                status.innerHTML = "<b>✅ ตรวจสอบสำเร็จ</b><br>" + result.message;
+                
+                // ส่งข้อความเข้าแชท LINE
+                if (liff.isInClient()) {
+                    await liff.sendMessages([{
+                        type: 'text',
+                        text: `✅ แจ้งโอนเงินสำเร็จ\nเดือน: ${monthFromUrl}\nยอดเงิน: ${parseFloat(amountFromUrl).toLocaleString()} บาท\nสถานะ: ตรวจสอบผ่านระบบแล้ว`
+                    }]);
+                }
+                setTimeout(() => { liff.closeWindow(); }, 3000);
+            } else {
+                status.style.color = "#dc3545";
+                status.innerHTML = "<b>❌ ข้อมูลไม่ถูกต้อง</b><br>" + result.message;
+                submitBtn.disabled = false;
+            }
+
+        } catch (err) {
+            loader.style.display = "none";
+            status.style.color = "#dc3545";
+            status.innerText = "❌ เกิดข้อผิดพลาด: " + err.message;
+            submitBtn.disabled = false;
+        }
+    }
+
+    main();
+</script>
 </body>
 </html>
