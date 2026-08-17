@@ -146,7 +146,7 @@
                 if (liff.isInClient()) {
                     await liff.sendMessages([{
                         type: 'text',
-                        text: `${profile.displayName} ชำระค่าประกันสังคมแล้ว\nประจำเดือน: ${monthFromUrl}แล้ว \nยอดเงิน: ${parseFloat(amountFromUrl).toLocaleString()} บาท\nให้ บริษัท ชัยวรรณการบัญชี จำกัด ✅`
+                        text: `${profile.displayName} ส่งหลักฐานการโอน ✅`
                     }]);
                 }
                 setTimeout(() => { liff.closeWindow(); }, 3000);
