@@ -65,7 +65,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const amountFromUrl = urlParams.get('amount')?.replace(/,/g, '') || "0";
     const monthFromUrl = urlParams.get('month') || "ไม่ระบุ";
-    const yearFromUrl = urlParams.get('year') || ""; // รับค่าปีจาก URL
+    const yearFromUrl = urlParams.get('year') || "2569"; // รับค่าปีจาก URL
     const gidFromUrl = urlParams.get('groupId');
 
     async function main() {
