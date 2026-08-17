@@ -39,7 +39,8 @@
     </div>
 
     <div class="amount-card">
-        <div class="amount-label">ยอดที่ต้องชำระประจำเดือน: <span id="txtMonth" style="color:var(--text-color); font-weight:bold;">-</span></div>
+        <!-- แก้ไขส่วนแสดงผล เดือน/ปี -->
+        <div class="amount-label">รอบการชำระ: <span id="txtPeriod" style="color:var(--text-color); font-weight:bold;">-</span></div>
         <div class="amount-value">฿ <span id="txtAmount">0.00</span></div>
     </div>
 
@@ -64,9 +65,9 @@
     const urlParams = new URLSearchParams(window.location.search);
     const amountFromUrl = urlParams.get('amount')?.replace(/,/g, '') || "0";
     const monthFromUrl = urlParams.get('month') || "ไม่ระบุ";
+    const yearFromUrl = urlParams.get('year') || ""; // รับค่าปีจาก URL
     const gidFromUrl = urlParams.get('groupId');
 
-    // 1. Initial LIFF
     async function main() {
         try {
             await liff.init({ liffId: MY_LIFF_ID });
@@ -77,13 +78,14 @@
             const profile = await liff.getProfile();
             document.getElementById('userProfile').innerText = "ผู้ส่ง: " + profile.displayName;
             document.getElementById('txtAmount').innerText = parseFloat(amountFromUrl).toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('txtMonth').innerText = monthFromUrl;
+            
+            // แสดงผล เดือน + ปี
+            document.getElementById('txtPeriod').innerText = `${monthFromUrl} ${yearFromUrl}`;
         } catch (err) {
             console.error('LIFF Init Error:', err);
         }
     }
 
-    // 2. แสดงตัวอย่างรูปภาพ
     function previewImage(input) {
         const file = input.files[0];
         if (file) {
@@ -97,7 +99,6 @@
         }
     }
 
-    // 3. เริ่มกระบวนการตรวจสอบ
     async function handleProcess() {
         const fileInput = document.getElementById('fileInput');
         const status = document.getElementById('status');
@@ -118,7 +119,6 @@
             const file = fileInput.files[0];
             const profile = await liff.getProfile();
             
-            // สร้าง FormData ส่งไปที่ n8n
             const formData = new FormData();
             formData.append('file', file);
             formData.append('userId', profile.userId);
@@ -126,8 +126,8 @@
             formData.append('groupId', gidFromUrl || profile.userId);
             formData.append('expectedAmount', amountFromUrl);
             formData.append('month', monthFromUrl);
+            formData.append('year', yearFromUrl); // ส่งปีไปที่ n8n ด้วย
 
-            // --- ส่งไปยัง n8n (ให้ n8n ไปเช็ก OCR/API ต่อ) ---
             const response = await fetch(N8N_WEBHOOK_URL, {
                 method: 'POST',
                 body: formData
@@ -142,11 +142,11 @@
                 status.style.color = "#1DB446";
                 status.innerHTML = "<b>✅ ตรวจสอบสำเร็จ</b><br>" + result.message;
                 
-                // ส่งข้อความเข้าแชท LINE
                 if (liff.isInClient()) {
                     await liff.sendMessages([{
                         type: 'text',
-                        text: `✅ ${profile.displayName} ชำระค่าประกันสังคม\nประจำเดือน: ${monthFromUrl} 2569\nยอดเงิน: ${amountFromUrl} บาท  `
+                        // ปรับข้อความให้แสดงเดือนและปีตามตัวแปร
+                        text: `✅ ${profile.displayName} ชำระค่าประกันสังคม\nประจำเดือน: ${monthFromUrl} ${yearFromUrl}\nยอดเงิน: ${parseFloat(amountFromUrl).toLocaleString()} บาท`
                     }]);
                 }
                 setTimeout(() => { liff.closeWindow(); }, 3000);
