@@ -147,7 +147,7 @@
                     await liff.sendMessages([{
                         type: 'text',
                         // ข้อความที่ส่งเข้ากลุ่ม LINE
-                        text: `✅ ${profile.displayName} ชำระค่าประกันสังคม\nยอดประจำเดือน: ${monthFromUrl} ${yearFromUrl}\nยอดเงิน: ${parseFloat(amountFromUrl).toLocaleString()} บาท`
+                        text: `✅ ${profile.displayName} ชำระค่าประกันสังคม\nประจำเดือน: ${monthFromUrl} ${yearFromUrl}\nยอดเงิน: ${parseFloat(amountFromUrl).toLocaleString()} บาท`
                     }]);
                 }
                 setTimeout(() => { liff.closeWindow(); }, 3000);
