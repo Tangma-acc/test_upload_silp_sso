@@ -146,7 +146,7 @@
                 if (liff.isInClient()) {
                     await liff.sendMessages([{
                         type: 'text',
-                        text: `${profile.displayName} ส่งหลักฐานการโอน ✅`
+                        text: `✅ ${profile.displayName} ชำระค่าประกันสังคม\nประจำเดือน: ${monthFromUrl} 2569\nยอดเงิน: ${amountFromUrl} บาท  `
                     }]);
                 }
                 setTimeout(() => { liff.closeWindow(); }, 3000);
